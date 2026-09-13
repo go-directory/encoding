@@ -16,7 +16,7 @@ INTEGER encompasses int64, uint64 and *big.Int types to
 implement an UNBOUNDED ASN.1 INTEGER.
 */
 type INTEGER interface {
-        ~int64 | ~uint64 | *big.Int
+	~int64 | ~uint64 | *big.Int
 }
 
 /*
@@ -53,7 +53,7 @@ func DecodeInteger[T INTEGER](enc []byte) (T, error) {
 		return zero, errors.New("asn1: invalid INTEGER")
 	}
 
-	l, n := ReadLength(enc[1:])
+	l, n := ReadPrimitiveLength(enc[1:])
 	if n == 0 || len(enc) < 1+n+l {
 		return zero, errors.New("asn1: invalid INTEGER")
 	}

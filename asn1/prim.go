@@ -19,7 +19,7 @@ func EncodePrimitive(t byte, v []byte) ([]byte, error) {
 		out = make([]byte, 1+1+n+l)
 		out[0] = t
 		out[1] = 0x80 | byte(n)
-		WriteLength(out[2:2+n], l)
+		WritePrimitiveLength(out[2:2+n], l)
 		copy(out[2+n:], v)
 	}
 
@@ -43,9 +43,9 @@ func LengthBytes(l int) int {
 }
 
 /*
-WriteLength writes length l to dst.
+WritePrimitiveLength writes length l to dst.
 */
-func WriteLength(dst []byte, l int) {
+func WritePrimitiveLength(dst []byte, l int) {
 	for i := len(dst) - 1; i >= 0; i-- {
 		dst[i] = byte(l)
 		l >>= 8
@@ -69,7 +69,7 @@ func encodeLength(l int) []byte {
 	return append([]byte{0x80 | byte(len(out))}, out...)
 }
 
-func ReadLength(b []byte) (int, int) {
+func ReadPrimitiveLength(b []byte) (int, int) {
 	if len(b) == 0 {
 		return 0, 0
 	}
