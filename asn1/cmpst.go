@@ -1,5 +1,9 @@
 package asn1
 
+import (
+	"strconv"
+)
+
 /*
 TLV implements a complete Type-Length-Value construct, useful for
 building PKI or document structures.
@@ -14,6 +18,20 @@ type TLV struct {
 }
 
 /*
+Expect returns an error if any of the input values do not correspond
+to those present in the receiver instance.
+*/
+func (r TLV) Expect(class byte, constructed bool, tag uint32) error {
+	return expect(r.Class, class, r.Constructed, constructed, uint32(r.Tag), tag)
+}
+
+/*
+HasChildren returns a Boolean value indicative of the receiver
+bearing one or more child [TLV] instances.
+*/
+func (r TLV) HasChildren() bool { return len(r.Children) > 0 }
+
+/*
 Tag implements a container for a class byte, a constructed bool
 and an ASN.1 tag uint32 when extracted from a payload.
 */
@@ -21,6 +39,55 @@ type Tag struct {
 	Class       byte
 	Constructed bool
 	Tag         uint32
+}
+
+/*
+Expect returns an error if any of the input values do not correspond
+to those present in the receiver instance.
+*/
+func (r Tag) Expect(class byte, constructed bool, tag uint32) error {
+	return expect(r.Class, class, r.Constructed, constructed, r.Tag, tag)
+}
+
+func expect(
+	rcvrClass, assnClass byte,
+	rcvrCons, assnCons bool,
+	rcvrTag, assnTag uint32,
+) (err error) {
+
+	if err = expectClass(rcvrClass, assnClass); err == nil {
+		if err = expectConstructed(rcvrCons, assnCons); err == nil {
+	    		err = expectTag(rcvrTag, assnTag)
+	    	}
+	}
+
+    	return
+}
+
+func expectClass(rcvrClass, assnClass byte) (err error) {
+    if rcvrClass != assnClass {
+        err = asn1Error("asn1: wrong class: got ",
+		strconv.Itoa(int(rcvrClass)), ", want ",
+		strconv.Itoa(int(assnClass)))
+    }
+    return
+}
+
+func expectTag(rcvrTag, assnTag uint32) (err error) {
+    if rcvrTag != assnTag {
+        err = asn1Error("asn1: wrong tag: got ",
+		strconv.Itoa(int(rcvrTag)), ", want ",
+		strconv.Itoa(int(assnTag)))
+    }
+    return
+}
+
+func expectConstructed(rcvrCons, assnCons bool) (err error) {
+    if rcvrCons != assnCons {
+        err = asn1Error("asn1: wrong constructed flag: got ", 
+		bool2str(rcvrCons), ", want ", bool2str(assnCons))
+    }
+    return
 }
 
 /*
