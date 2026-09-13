@@ -17,8 +17,8 @@ const (
 )
 
 const (
-	TagUniversal       = 0x00
-	TagApplication     = 0x40
-	TagContextSpecific = 0x80
-	TagPrivate         = 0xC0
+	ClassUniversal       = 0x00
+	ClassApplication     = 0x40
+	ClassContextSpecific = 0x80
+	ClassPrivate         = 0xC0
 )
