@@ -1,4 +1,4 @@
-package asn1
+package vlq
 
 import (
 	"math/big"
@@ -10,9 +10,9 @@ func TestVLQ_int64RoundTrip(t *testing.T) {
 		int64(4372),
 		int64(-87374),
 	} {
-		enc := EncodeVLQ[int64](integer)
+		enc := Encode[int64](integer)
 		var p int
-		dec, err := DecodeVLQ[int64](enc, &p)
+		dec, err := Decode[int64](enc, &p)
 		if err != nil {
 			t.Fatalf("%s[%d] VLQ decode failed: %v", t.Name(), idx, err)
 		} else if dec != integer {
@@ -27,9 +27,9 @@ func TestVLQ_uint64RoundTrip(t *testing.T) {
 		uint64(4372),
 		uint64(87374),
 	} {
-		enc := EncodeVLQ[uint64](integer)
+		enc := Encode[uint64](integer)
 		var p int
-		dec, err := DecodeVLQ[uint64](enc, &p)
+		dec, err := Decode[uint64](enc, &p)
 		if err != nil {
 			t.Fatalf("%s[%d] VLQ decode failed: %v", t.Name(), idx, err)
 		} else if dec != integer {
@@ -48,10 +48,10 @@ func TestVLQ_bigIntRoundTrip(t *testing.T) {
 		two,
 		three,
 	} {
-		enc := EncodeVLQ[*big.Int](integer)
+		enc := Encode[*big.Int](integer)
 
 		var p int
-		dec, err := DecodeVLQ[*big.Int](enc, &p)
+		dec, err := Decode[*big.Int](enc, &p)
 		if err != nil {
 			t.Fatalf("%s[%d] VLQ decode failed: %v", t.Name(), idx, err)
 		} else if dec.(*big.Int).Cmp(integer) != 0 {

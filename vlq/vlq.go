@@ -1,4 +1,4 @@
-package asn1
+package vlq
 
 /*
 vlq.go pertains to the encoding and decoding of numerical
@@ -20,10 +20,10 @@ type INTEGER interface {
 }
 
 /*
-EncodeVLQ returns the variable length quantity encoding
+Encode returns the variable length quantity encoding
 of the input value.
 */
-func EncodeVLQ[T INTEGER](v T) []byte {
+func Encode[T INTEGER](v T) []byte {
 	var enc []byte
 
 	switch tv := any(v).(type) {
@@ -39,10 +39,10 @@ func EncodeVLQ[T INTEGER](v T) []byte {
 }
 
 /*
-DecodeVLQ decodes enc into the return instance, which will
+Decode decodes enc into the return instance, which will
 be uint64, int64 or *[big.Int].
 */
-func DecodeVLQ[T INTEGER](enc []byte, p *int) (any, error) {
+func Decode[T INTEGER](enc []byte, p *int) (any, error) {
 	var (
 		zero T
 		dec  any
