@@ -17,8 +17,8 @@ const (
 )
 
 const (
-	ClassUniversal       = 0x00
-	ClassApplication     = 0x40
-	ClassContextSpecific = 0x80
-	ClassPrivate         = 0xC0
+	ClassUniversal       = 0x0
+	ClassApplication     = 0x1
+	ClassContextSpecific = 0x2
+	ClassPrivate         = 0x3
 )
