@@ -15,3 +15,11 @@ const (
 	TagUniversalString byte = 0x1C // 28
 	TagBMPString       byte = 0x1E // 30
 )
+
+const (
+        TagUniversal       = 0x00
+        TagApplication     = 0x40
+        TagContextSpecific = 0x80
+        TagPrivate         = 0xC0
+)
+
