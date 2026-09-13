@@ -1,13 +1,34 @@
 package asn1
 
+/*
+TLV implements a complete Type-Length-Value construct, useful for
+building PKI or document structures.
+*/
+type TLV struct {
+	Tag         byte
+	Class       byte
+	Constructed bool
+	Length      int
+	Value       []byte
+	Children    []TLV
+}
+
+/*
+Tag implements a container for a class byte, a constructed bool
+and an ASN.1 tag uint32 when extracted from a payload.
+*/
 type Tag struct {
 	Class       byte
 	Constructed bool
 	Tag         uint32
 }
 
-// writeTag writes class+constructed+tagNumber (supports high-tag-number form).
-// class: 0=universal, 1=application, 2=context-specific, 3=private
+/*
+WriteConstructedTag returns an instance of []byte containing the input
+class, constructed and tagNumber values.
+
+This method supports the high-tag-number form.
+*/
 func WriteConstructedTag(dst []byte, class byte, constructed bool, tagNum uint32) []byte {
 	var first byte
 	first = (class << 6)
