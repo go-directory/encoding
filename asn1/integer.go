@@ -16,7 +16,7 @@ INTEGER encompasses int64, uint64 and *big.Int types to
 implement an UNBOUNDED ASN.1 INTEGER.
 */
 type INTEGER interface {
-	~int64 | ~uint64 | *big.Int
+	~int | ~int64 | ~uint64 | *big.Int
 }
 
 /*
@@ -30,6 +30,8 @@ func EncodeInteger[T INTEGER](v T) []byte {
 		val = encodeUint64(tv)
 	case int64:
 		val = encodeInt64(tv)
+	case int:
+		val = encodeInt64(int64(tv))
 	case *big.Int:
 		val = encodeBigInt(tv)
 	default:
@@ -66,6 +68,12 @@ func DecodeInteger[T INTEGER](enc []byte) (T, error) {
 			return zero, errors.New("asn1: INTEGER too large for int64")
 		}
 		return any(decodeInt64(v)).(T), nil
+
+	case int:
+		if len(v) > 8 {
+			return zero, errors.New("asn1: INTEGER too large for int")
+		}
+		return any(int(decodeInt64(v))).(T), nil
 
 	case uint64:
 		if len(v) > 8 {

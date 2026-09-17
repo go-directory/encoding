@@ -5,6 +5,23 @@ import (
 	"testing"
 )
 
+func TestInteger_int(t *testing.T) {
+        for idx, integer := range []int{
+                int(-37465),
+                int(34728432),
+        } {
+                enc := EncodeInteger(integer)
+                out, err := DecodeInteger[int](enc)
+                if err != nil {
+                        t.Fatalf("%s[%d] failed: %v", t.Name(), idx, err)
+                }
+                if out != integer {
+                        t.Fatalf("%s[%d] failed:\n\twant: %d\n\tgot:  %d",
+                                t.Name(), idx, integer, out)
+                }
+        }
+}
+
 func TestInteger_int64(t *testing.T) {
 	for idx, integer := range []int64{
 		int64(-37465),
