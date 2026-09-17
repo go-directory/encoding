@@ -123,33 +123,33 @@ for structural guidance.
 See also [UnwrapTLV].
 */
 func WrapTLV(buf []byte, tags ...Tag) ([]byte, error) {
-    if len(tags) == 0 {
-        return nil, asn1Error("WrapTLV: no Tags found")
-    }
+	if len(tags) == 0 {
+		return nil, asn1Error("WrapTLV: no Tags found")
+	}
 
-    cur := buf
-    for i := 0; i < len(tags); i++ {
-        t := tags[i]
+	cur := buf
+	for i := 0; i < len(tags); i++ {
+		t := tags[i]
 
-        if t.Constructed {
-            cur = WriteConstructedTLV(
-                nil,
-                t.Class,
-                true,
-                t.Tag,
-                cur,
-            )
-        } else {
-            cur = WritePrimitiveTLV(
-                nil,
-                t.Class,
-                t.Tag,
-                cur,
-            )
-        }
-    }
+		if t.Constructed {
+			cur = WriteConstructedTLV(
+				nil,
+				t.Class,
+				true,
+				t.Tag,
+				cur,
+			)
+		} else {
+			cur = WritePrimitiveTLV(
+				nil,
+				t.Class,
+				t.Tag,
+				cur,
+			)
+		}
+	}
 
-    return cur, nil
+	return cur, nil
 }
 
 func expect(
