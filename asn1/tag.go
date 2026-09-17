@@ -17,8 +17,8 @@ const (
 )
 
 const (
-    ClassUniversal       = 0
-    ClassApplication     = 1
-    ClassContextSpecific = 2
-    ClassPrivate         = 3
+	ClassUniversal       = 0
+	ClassApplication     = 1
+	ClassContextSpecific = 2
+	ClassPrivate         = 3
 )

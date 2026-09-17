@@ -56,18 +56,18 @@ an error following calls of [ReadConstructedTLV] and [Tag.Expect].
 This is merely a convenience function.
 */
 func ReadExpectedConstructedTLV(
-    enc []byte,
-    p *int,
-    class byte,
-    tag uint32,
+	enc []byte,
+	p *int,
+	class byte,
+	tag uint32,
 ) ([]byte, error) {
 
-    t, payload, err := ReadConstructedTLV(enc, p)
-    if err == nil {
-    	err = t.Expect(class, true, tag)
-    }
+	t, payload, err := ReadConstructedTLV(enc, p)
+	if err == nil {
+		err = t.Expect(class, true, tag)
+	}
 
-    return payload, err
+	return payload, err
 }
 
 /*
@@ -77,32 +77,40 @@ in the input variadic [Tag] instances.
 
 Each [Tag] processes a single "layer" of the encoded structure. If
 there are three [Tag] instances input, this function attempts to
-traverse the same number of layers. The data immediately after the
-final layer is the return payload.
+traverse the same number of layers. The data encountered at the last
+layer is the return payload.
 
 This is merely a convenience function written to simply calls to the
 [ReadExpectedConstructedTLV] function in iterative fashion.
 */
 func WalkTLV(enc []byte, tags ...Tag) ([]byte, error) {
-    var err error
-    if len(enc) == 0 {
-	err = asn1Error("WalkTLV: empty input payload")
-	return nil, err
-    }
-
-    p := 0
-    cur := enc
-
-    for i := 0; i < len(tags) && err == nil; i++ {
-	want := tags[i]
-	var payload []byte
-	if payload, err = ReadExpectedConstructedTLV(cur, &p, want.Class, want.Tag); err == nil {
-        	cur = payload
-        	p = 0
+	var err error
+	if len(enc) == 0 {
+		err = asn1Error("WalkTLV: empty input payload")
+		return nil, err
 	}
-    }
 
-    return cur, err
+	cur := enc
+	p := 0
+
+	for i := 0; i < len(tags) && err == nil; i++ {
+		want := tags[i]
+		var payload []byte
+		if want.Constructed {
+			// constructed TLV
+			if payload, err = ReadExpectedConstructedTLV(cur, &p, want.Class, want.Tag); err == nil {
+				cur = payload
+				p = 0
+			}
+		} else {
+			if payload, err = ReadExpectedPrimitiveTLV(cur, &p, want.Class, want.Tag); err == nil {
+				cur = payload
+				p = 0
+			}
+		}
+	}
+
+	return cur, nil
 }
 
 func expect(
@@ -113,37 +121,37 @@ func expect(
 
 	if err = expectClass(rcvrClass, assnClass); err == nil {
 		if err = expectConstructed(rcvrCons, assnCons); err == nil {
-	    		err = expectTag(rcvrTag, assnTag)
-	    	}
+			err = expectTag(rcvrTag, assnTag)
+		}
 	}
 
-    	return
+	return
 }
 
 func expectClass(rcvrClass, assnClass byte) (err error) {
-    if rcvrClass != assnClass {
-        err = asn1Error("asn1: wrong class: got ",
-		strconv.Itoa(int(rcvrClass)), ", want ",
-		strconv.Itoa(int(assnClass)))
-    }
-    return
+	if rcvrClass != assnClass {
+		err = asn1Error("asn1: wrong class: got ",
+			strconv.Itoa(int(rcvrClass)), ", want ",
+			strconv.Itoa(int(assnClass)))
+	}
+	return
 }
 
 func expectTag(rcvrTag, assnTag uint32) (err error) {
-    if rcvrTag != assnTag {
-        err = asn1Error("asn1: wrong tag: got ",
-		strconv.Itoa(int(rcvrTag)), ", want ",
-		strconv.Itoa(int(assnTag)))
-    }
-    return
+	if rcvrTag != assnTag {
+		err = asn1Error("asn1: wrong tag: got ",
+			strconv.Itoa(int(rcvrTag)), ", want ",
+			strconv.Itoa(int(assnTag)))
+	}
+	return
 }
 
 func expectConstructed(rcvrCons, assnCons bool) (err error) {
-    if rcvrCons != assnCons {
-        err = asn1Error("asn1: wrong constructed flag: got ", 
-		bool2str(rcvrCons), ", want ", bool2str(assnCons))
-    }
-    return
+	if rcvrCons != assnCons {
+		err = asn1Error("asn1: wrong constructed flag: got ",
+			bool2str(rcvrCons), ", want ", bool2str(assnCons))
+	}
+	return
 }
 
 /*

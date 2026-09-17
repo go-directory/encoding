@@ -26,6 +26,45 @@ func EncodePrimitive(t byte, v []byte) ([]byte, error) {
 	return out, nil
 }
 
+func ReadExpectedPrimitiveTLV(buf []byte, p *int, class byte, tag uint32) ([]byte, error) {
+	if *p >= len(buf) {
+		return nil, errEOF
+	}
+
+	// read tag byte
+	tagByte := buf[*p]
+	*p++
+
+	rcvrClass := tagByte >> 6
+	rcvrCons := (tagByte & 0x20) != 0
+	rcvrTag := uint32(tagByte & 0x1F)
+
+	// primitive must have constructed = false
+	if rcvrClass != class || rcvrCons != false || rcvrTag != tag {
+		return nil, asn1Error("primitive tag mismatch")
+	}
+
+	// read primitive length
+	if *p >= len(buf) {
+		return nil, errEOF
+	}
+
+	l, n := ReadPrimitiveLength(buf[*p:])
+	if n == 0 {
+		return nil, errLength
+	}
+	*p += n
+
+	if *p+l > len(buf) {
+		return nil, errEOF
+	}
+
+	out := buf[*p : *p+l]
+	*p += l
+
+	return out, nil
+}
+
 /*
 LengthBytes returns the number of bytes required to hold l.
 */

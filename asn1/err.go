@@ -14,8 +14,8 @@ var (
 )
 
 func asn1Error(msg ...string) error {
-        m := append([]string{"ASN.1 "}, msg...)
-        return common.ErrorASN1.New(m...)
+	m := append([]string{"ASN.1 "}, msg...)
+	return common.ErrorASN1.New(m...)
 }
 
 func bool2str(b bool) (s string) {
