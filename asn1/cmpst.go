@@ -71,7 +71,7 @@ func ReadExpectedConstructedTLV(
 }
 
 /*
-WalkTLV returns an instance of []byte alongside an error following an
+UnwrapTLV returns an instance of []byte alongside an error following an
 attempt to traverse the provided encoding according to the parameters
 in the input variadic [Tag] instances.
 
@@ -82,8 +82,10 @@ layer is the return payload.
 
 This is merely a convenience function written to simply calls to the
 [ReadExpectedConstructedTLV] function in iterative fashion.
+
+See also [WrapTLV].
 */
-func WalkTLV(enc []byte, tags ...Tag) ([]byte, error) {
+func UnwrapTLV(enc []byte, tags ...Tag) ([]byte, error) {
 	var err error
 	if len(enc) == 0 {
 		err = asn1Error("WalkTLV: empty input payload")
@@ -107,6 +109,45 @@ func WalkTLV(enc []byte, tags ...Tag) ([]byte, error) {
 				cur = payload
 				p = 0
 			}
+		}
+	}
+
+	return cur, nil
+}
+
+/*
+WrapTLV returns a []byte instance alongside an error following an
+attempt to wrap the input buf value using the input [Tag] variadic
+for structural guidance.
+
+See also [UnwrapTLV].
+*/
+func WrapTLV(buf []byte, tags ...Tag) ([]byte, error) {
+	if len(tags) == 0 {
+		return nil, asn1Error("WrapTLV: no Tags found")
+	}
+
+	cur := buf
+
+	// wrap inside → outside
+	for i := len(tags) - 1; i >= 0; i-- {
+		t := tags[i]
+
+		if t.Constructed {
+			cur = WriteConstructedTLV(
+				nil,
+				t.Class,
+				true,
+				t.Tag,
+				cur,
+			)
+		} else {
+			cur = WritePrimitiveTLV(
+				nil,
+				t.Class,
+				t.Tag,
+				cur,
+			)
 		}
 	}
 

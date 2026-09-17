@@ -26,6 +26,29 @@ func EncodePrimitive(t byte, v []byte) ([]byte, error) {
 	return out, nil
 }
 
+/*
+WritePrimitiveTLV returns an instance of []byte
+*/
+func WritePrimitiveTLV(dst []byte, class byte, tag uint32, payload []byte) []byte {
+	// primitive tag byte
+	first := (class << 6) | byte(tag)
+
+	// encode length
+	l := len(payload)
+	if l < 128 {
+		dst = append(dst, first, byte(l))
+	} else {
+		n := LengthBytes(l)
+		dst = append(dst, first, 0x80|byte(n))
+		var tmp [4]byte
+		WritePrimitiveLength(tmp[len(tmp)-n:], l)
+		dst = append(dst, tmp[len(tmp)-n:]...)
+	}
+
+	// payload
+	return append(dst, payload...)
+}
+
 func ReadExpectedPrimitiveTLV(buf []byte, p *int, class byte, tag uint32) ([]byte, error) {
 	if *p >= len(buf) {
 		return nil, errEOF

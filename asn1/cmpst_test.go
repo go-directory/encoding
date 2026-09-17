@@ -1,8 +1,35 @@
 package asn1
 
 import (
+	"fmt"
 	"testing"
 )
+
+func ExampleWrapTLV_roundTrip() {
+	coreValue := []byte(`some encoded value`)
+	tag := uint32(7) // or whatever your real tag is
+
+	wrappedValue, err := WrapTLV(coreValue,
+		Tag{ClassUniversal, true, uint32(TagSequence)},
+		Tag{ClassContextSpecific, true, tag},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	dec, err := UnwrapTLV(wrappedValue,
+		Tag{ClassUniversal, true, uint32(TagSequence)},
+		Tag{ClassContextSpecific, true, tag},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("%s", dec)
+	// Output: some encoded value
+}
 
 func TestTagExpectSuccess(t *testing.T) {
 	r := Tag{
