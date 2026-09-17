@@ -49,6 +49,62 @@ func (r Tag) Expect(class byte, constructed bool, tag uint32) error {
 	return expect(r.Class, class, r.Constructed, constructed, r.Tag, tag)
 }
 
+/*
+ReadExpectedConstructedTLV returns an instance of []byte alongside
+an error following calls of [ReadConstructedTLV] and [Tag.Expect].
+
+This is merely a convenience function.
+*/
+func ReadExpectedConstructedTLV(
+    enc []byte,
+    p *int,
+    class byte,
+    tag uint32,
+) ([]byte, error) {
+
+    t, payload, err := ReadConstructedTLV(enc, p)
+    if err == nil {
+    	err = t.Expect(class, true, tag)
+    }
+
+    return payload, err
+}
+
+/*
+WalkTLV returns an instance of []byte alongside an error following an
+attempt to traverse the provided encoding according to the parameters
+in the input variadic [Tag] instances.
+
+Each [Tag] processes a single "layer" of the encoded structure. If
+there are three [Tag] instances input, this function attempts to
+traverse the same number of layers. The data immediately after the
+final layer is the return payload.
+
+This is merely a convenience function written to simply calls to the
+[ReadExpectedConstructedTLV] function in iterative fashion.
+*/
+func WalkTLV(enc []byte, tags ...Tag) ([]byte, error) {
+    var err error
+    if len(enc) == 0 {
+	err = asn1Error("WalkTLV: empty input payload")
+	return nil, err
+    }
+
+    p := 0
+    cur := enc
+
+    for i := 0; i < len(tags) && err == nil; i++ {
+	want := tags[i]
+	var payload []byte
+	if payload, err = ReadExpectedConstructedTLV(cur, &p, want.Class, want.Tag); err == nil {
+        	cur = payload
+        	p = 0
+	}
+    }
+
+    return cur, err
+}
+
 func expect(
 	rcvrClass, assnClass byte,
 	rcvrCons, assnCons bool,
