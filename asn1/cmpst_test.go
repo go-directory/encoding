@@ -19,8 +19,8 @@ func ExampleWrapTLV_roundTrip() {
 	}
 
 	dec, err := UnwrapTLV(wrappedValue,
-		Tag{ClassUniversal, true, uint32(TagSequence)},
 		Tag{ClassContextSpecific, true, tag},
+		Tag{ClassUniversal, true, uint32(TagSequence)},
 	)
 	if err != nil {
 		fmt.Println(err)
