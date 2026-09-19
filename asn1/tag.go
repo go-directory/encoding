@@ -3,6 +3,7 @@ package asn1
 const (
 	TagBoolean         byte = 0x01 // 1
 	TagInteger         byte = 0x02 // 2
+	TagBitString	   byte = 0x03 // 3
 	TagOctetString     byte = 0x04 // 4
 	TagEnumerated      byte = 0x0A // 10
 	TagUTF8String      byte = 0x0c // 12
