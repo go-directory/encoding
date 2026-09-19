@@ -2,18 +2,18 @@ package asn1
 
 /*
 integer.go implements the codec for the UNBOUNDED ASN.1
-INTEGER type.  This functionality lends itself to X.680
-number forms (OID arcs) when used in an unsigned context.
+INTEGER type using generics.  This functionality lends
+itself to X.680 number forms (OID arcs) when used in an
+unsigned context.
 */
 
 import (
-	"errors"
 	"math/big"
 )
 
 /*
-INTEGER encompasses int64, uint64 and *big.Int types to
-implement an UNBOUNDED ASN.1 INTEGER.
+INTEGER encompasses int, int64, uint, uint64 and *big.Int
+types to implement an UNBOUNDED ASN.1 INTEGER.
 */
 type INTEGER interface {
 	~int | ~uint | ~int64 | ~uint64 | *big.Int
@@ -54,54 +54,71 @@ func DecodeInteger[T INTEGER](enc []byte) (T, error) {
 	var zero T
 
 	if len(enc) < 2 || enc[0] != TagInteger {
-		return zero, errors.New("asn1: invalid INTEGER")
+		return zero, asn1Error("INTEGER: decode failed: invalid tag or length")
 	}
 
 	l, n := ReadPrimitiveLength(enc[1:])
 	if n == 0 || len(enc) < 1+n+l {
-		return zero, errors.New("asn1: invalid INTEGER")
+		return zero, asn1Error("INTEGER: decode failed: failed to read primitive length octet(s)")
 	}
 
 	v := enc[1+n : 1+n+l]
 
 	switch any(zero).(type) {
-	case int64:
-		if len(v) > 8 {
-			return zero, errors.New("asn1: INTEGER too large for int64")
-		}
-		return any(decodeInt64(v)).(T), nil
+	case int64, int:
+		return decodeSigned[T](v)
 
-	case int:
-		if len(v) > 8 {
-			return zero, errors.New("asn1: INTEGER too large for int")
-		}
-		return any(int(decodeInt64(v))).(T), nil
-
-	case uint64:
-		if len(v) > 8 {
-			return zero, errors.New("asn1: INTEGER too large for uint64")
-		}
-		s := decodeInt64(v)
-		if s < 0 {
-			return zero, errors.New("asn1: negative INTEGER for uint64")
-		}
-		return any(uint64(s)).(T), nil
-
-	case uint:
-		if len(v) > 8 {
-			return zero, errors.New("asn1: INTEGER too large for uint")
-		}
-		s := decodeInt64(v)
-		if s < 0 {
-			return zero, errors.New("asn1: negative INTEGER for uint")
-		}
-		return any(uint(s)).(T), nil
+	case uint64, uint:
+		return decodeUnsigned[T](v)
 
 	case *big.Int:
 		return any(decodeBigInt(v)).(T), nil
 	}
 
-	return zero, errors.New("asn1: unsupported INTEGER type")
+	return zero, asn1Error("INTEGER: decode failed: unsupported input type")
+}
+
+func decodeSigned[T INTEGER](v []byte) (out T, err error) {
+	var zero T
+	if len(v) > 8 {
+		err = asn1Error("INTEGER: too large for signed integer")
+		return
+	}
+
+	s := decodeInt64(v)
+	switch any(zero).(type) {
+	case int64:
+		out = any(int64(s)).(T)
+
+	case int:
+		out = any(int(s)).(T)
+	}
+
+	return out, err
+}
+
+func decodeUnsigned[T INTEGER](v []byte) (out T, err error) {
+	var zero T
+	if len(v) > 8 {
+		err = asn1Error("INTEGER: too large for unsigned integer")
+		return
+	}
+
+	s := decodeInt64(v)
+	if s < 0 {
+		err = asn1Error("INTEGER: negative value not allowed for unsigned integer")
+		return
+	}
+
+	switch any(zero).(type) {
+	case uint64:
+		out = any(uint64(s)).(T)
+
+	case uint:
+		out = any(uint(s)).(T)
+	}
+
+	return out, err
 }
 
 func encodeInt64(n int64) []byte {
