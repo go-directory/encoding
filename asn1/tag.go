@@ -24,3 +24,21 @@ const (
 	ClassContextSpecific = 2
 	ClassPrivate         = 3
 )
+
+/*
+ReadTag is a convenience function meant to quickly return
+class/tag/constructed information from the first byte of
+the input value.
+
+If the return ok value is false, the other return values
+should not be evaluated.
+*/
+func ReadTag(enc []byte) (class byte, constructed bool, tag uint32, ok bool) {
+	if ok = len(enc) > 0; ok {
+		class = enc[0] >> 6
+		constructed = (enc[0] & 0x20) != 0
+		tag = uint32(enc[0] & 0x1F)
+	}
+
+	return
+}
