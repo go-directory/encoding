@@ -32,24 +32,6 @@ bearing one or more child [TLV] instances.
 func (r TLV) HasChildren() bool { return len(r.Children) > 0 }
 
 /*
-Tag implements a container for a class byte, a constructed bool
-and an ASN.1 tag uint32 when extracted from a payload.
-*/
-type Tag struct {
-	Class       byte
-	Constructed bool
-	Tag         uint32
-}
-
-/*
-Expect returns an error if any of the input values do not correspond
-to those present in the receiver instance.
-*/
-func (r Tag) Expect(class byte, constructed bool, tag uint32) error {
-	return expect(r.Class, class, r.Constructed, constructed, r.Tag, tag)
-}
-
-/*
 ReadExpectedConstructedTLV returns an instance of []byte alongside
 an error following calls of [ReadConstructedTLV] and [Tag.Expect].
 

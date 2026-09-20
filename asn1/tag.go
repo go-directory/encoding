@@ -26,19 +26,36 @@ const (
 )
 
 /*
-ReadTag is a convenience function meant to quickly return
-class/tag/constructed information from the first byte of
-the input value.
+ReadTag returns an instance of [Tag] alongside a success
+indicative Boolean.
 
-If the return ok value is false, the other return values
-should not be evaluated.
+If the return ok value is false, the [Tag] return value
+may not be trustworthy.
 */
-func ReadTag(enc []byte) (class byte, constructed bool, tag uint32, ok bool) {
+func ReadTag(enc []byte) (tag Tag, ok bool) {
 	if ok = len(enc) > 0; ok {
-		class = enc[0] >> 6
-		constructed = (enc[0] & 0x20) != 0
-		tag = uint32(enc[0] & 0x1F)
+		tag.Class = enc[0] >> 6
+		tag.Constructed = (enc[0] & 0x20) != 0
+		tag.Tag = uint32(enc[0] & 0x1F)
 	}
 
 	return
+}
+
+/*
+Tag implements a container for a class byte, a constructed bool
+and an ASN.1 tag uint32 when extracted from a payload.
+*/
+type Tag struct {
+	Class       byte
+	Constructed bool
+	Tag         uint32
+}
+
+/*
+Expect returns an error if any of the input values do not correspond
+to those present in the receiver instance.
+*/
+func (r Tag) Expect(class byte, constructed bool, tag uint32) error {
+	return expect(r.Class, class, r.Constructed, constructed, r.Tag, tag)
 }
