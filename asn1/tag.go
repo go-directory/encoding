@@ -5,6 +5,7 @@ const (
 	TagInteger          byte = 0x02 // 2
 	TagBitString        byte = 0x03 // 3
 	TagOctetString      byte = 0x04 // 4
+	TagNull		    byte = 0x05 // 5
 	TagObjectIdentifier byte = 0x06 // 6
 	TagEnumerated       byte = 0x0A // 10
 	TagUTF8String       byte = 0x0c // 12
