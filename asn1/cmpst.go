@@ -70,7 +70,7 @@ See also [WrapTLV].
 func UnwrapTLV(enc []byte, tags ...Tag) ([]byte, error) {
 	var err error
 	if len(enc) == 0 {
-		err = asn1Error("WalkTLV: empty input payload")
+		err = asn1Error("UnwrapTLV: empty input payload")
 		return nil, err
 	}
 
