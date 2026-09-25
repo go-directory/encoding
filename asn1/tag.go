@@ -60,3 +60,16 @@ to those present in the receiver instance.
 func (r Tag) Expect(class byte, constructed bool, tag uint32) error {
 	return expect(r.Class, class, r.Constructed, constructed, r.Tag, tag)
 }
+
+/*
+RawValue represents an undecoded ASN.1 object. One common use case
+for this type is where certain definitions possess component values
+that are, themselves, encoded.
+*/
+type RawValue struct {
+	Class, Tag int
+	IsCompound bool
+	Bytes      []byte
+	FullBytes  []byte // includes the tag and length
+}
+
