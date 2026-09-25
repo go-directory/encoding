@@ -67,9 +67,8 @@ for this type is where certain definitions possess component values
 that are, themselves, encoded.
 */
 type RawValue struct {
-	Class, Tag int
-	IsCompound bool
-	Bytes      []byte
-	FullBytes  []byte // includes the tag and length
+	Tag	   Tag
+	Bytes      []byte // value only
+	FullBytes  []byte // full Tag-Length-Value bytes
 }
 
