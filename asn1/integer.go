@@ -13,10 +13,10 @@ import (
 
 /*
 INTEGER encompasses int, int64, uint, uint64 and *big.Int
-types to implement an UNBOUNDED ASN.1 INTEGER.
+types to implement a generic UNBOUNDED ASN.1 INTEGER.
 */
 type INTEGER interface {
-	~int | ~uint | ~int64 | ~uint64 | *big.Int
+	~int | ~uint | ~int32 | ~int64 | ~uint32 | ~uint64 | *big.Int
 }
 
 /*
@@ -26,10 +26,14 @@ func EncodeInteger[T INTEGER](v T) []byte {
 	var val []byte
 
 	switch tv := any(v).(type) {
+	case uint32:
+		val = encodeUint64(uint64(tv))
 	case uint64:
 		val = encodeUint64(tv)
 	case uint:
 		val = encodeUint64(uint64(tv))
+	case int32:
+		val = encodeInt32(tv)
 	case int64:
 		val = encodeInt64(tv)
 	case int:
@@ -65,10 +69,10 @@ func DecodeInteger[T INTEGER](enc []byte) (T, error) {
 	v := enc[1+n : 1+n+l]
 
 	switch any(zero).(type) {
-	case int64, int:
+	case int64, int32, int:
 		return decodeSigned[T](v)
 
-	case uint64, uint:
+	case uint64, uint32, uint:
 		return decodeUnsigned[T](v)
 
 	case *big.Int:
@@ -89,6 +93,9 @@ func decodeSigned[T INTEGER](v []byte) (out T, err error) {
 	switch any(zero).(type) {
 	case int64:
 		out = any(int64(s)).(T)
+
+	case int32:
+		out = any(int32(s)).(T)
 
 	case int:
 		out = any(int(s)).(T)
@@ -113,6 +120,9 @@ func decodeUnsigned[T INTEGER](v []byte) (out T, err error) {
 	switch any(zero).(type) {
 	case uint64:
 		out = any(uint64(s)).(T)
+
+	case uint32:
+		out = any(uint32(s)).(T)
 
 	case uint:
 		out = any(uint(s)).(T)
@@ -151,6 +161,37 @@ func encodeInt64(n int64) []byte {
 	return out
 }
 
+func encodeInt32(n int32) []byte {
+        if n == 0 {
+                return []byte{0x00}
+        }
+
+        var tmp [8]byte
+        v := uint32(n)
+        i := len(tmp)
+
+        for v != 0 && i > 0 {
+                i--
+                tmp[i] = byte(v)
+                v >>= 8
+        }
+
+        out := tmp[i:]
+
+        // Positive: ensure MSB = 0
+        if n > 0 && out[0]&0x80 != 0 {
+                out = append([]byte{0x00}, out...)
+        }
+
+        // Negative: ensure MSB = 1
+        if n < 0 && out[0]&0x80 == 0 {
+                out = append([]byte{0xFF}, out...)
+        }
+
+        return out
+}
+
+
 func encodeUint64(u uint64) []byte {
 	if u == 0 {
 		return []byte{0x00}
@@ -183,6 +224,16 @@ func decodeInt64(b []byte) int64 {
 	shift := 64 - uint(len(b))*8
 	n = (n << shift) >> shift
 	return n
+}
+
+func decodeInt32(b []byte) int32 {
+        var n int32
+        for i := 0; i < len(b); i++ {
+                n = (n << 8) | int32(b[i])
+        }
+        shift := 64 - uint(len(b))*8
+        n = (n << shift) >> shift
+        return n
 }
 
 func encodeBigInt(b *big.Int) []byte {
