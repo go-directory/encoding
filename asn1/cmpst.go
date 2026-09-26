@@ -4,7 +4,6 @@ package asn1
 TLV implements a complete Type-Length-Value construct, useful for
 building PKI or document structures.
 */
-/*
 type TLV struct {
 	Tag         byte
 	Class       byte
@@ -13,23 +12,20 @@ type TLV struct {
 	Value       []byte
 	Children    []TLV
 }
-*/
 
 /*
 Expect returns an error if any of the input values do not correspond
 to those present in the receiver instance.
 */
-/*
 func (r TLV) Expect(class byte, constructed bool, tag uint32) error {
 	return expect(r.Class, class, r.Constructed, constructed, uint32(r.Tag), tag)
 }
-*/
 
 /*
 HasChildren returns a Boolean value indicative of the receiver
 bearing one or more child [TLV] instances.
 */
-//func (r TLV) HasChildren() bool { return len(r.Children) > 0 }
+func (r TLV) HasChildren() bool { return len(r.Children) > 0 }
 
 /*
 ReadExpectedConstructedTLV returns an instance of []byte alongside
