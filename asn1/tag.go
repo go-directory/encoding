@@ -5,7 +5,7 @@ const (
 	TagInteger          byte = 0x02 // 2
 	TagBitString        byte = 0x03 // 3
 	TagOctetString      byte = 0x04 // 4
-	TagNull		    byte = 0x05 // 5
+	TagNull             byte = 0x05 // 5
 	TagObjectIdentifier byte = 0x06 // 6
 	TagEnumerated       byte = 0x0A // 10
 	TagUTF8String       byte = 0x0c // 12
@@ -44,6 +44,25 @@ func ReadTag(enc []byte) (tag Tag, ok bool) {
 }
 
 /*
+WriteTag returns an instance of []byte containing the
+*/
+func WriteTag(dst []byte, class byte, constructed bool, tagNum uint32) []byte {
+	first := class << 6
+
+	if constructed {
+		first |= 0x20
+	}
+
+	first |= byte(tagNum)
+
+	if dst == nil {
+		dst = []byte{}
+	}
+
+	return append(dst, first)
+}
+
+/*
 Tag implements a container for a class byte, a constructed bool
 and an ASN.1 tag uint32 when extracted from a payload.
 */
@@ -67,8 +86,7 @@ for this type is where certain definitions possess component values
 that are, themselves, encoded.
 */
 type RawValue struct {
-	Tag	   Tag
-	Bytes      []byte // value only
-	FullBytes  []byte // full Tag-Length-Value bytes
+	Tag       Tag
+	Bytes     []byte // value only
+	FullBytes []byte // full Tag-Length-Value bytes
 }
-

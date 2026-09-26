@@ -2,7 +2,15 @@ package asn1
 
 /*
 EncodePrimitive returns an instance of []byte alongside an
-error following an attempt to encode v based on tag t.
+error following an attempt to encode v based on tag t into
+a tag + length + value payload. [ClassUniversal] is assigned
+implicitly.
+
+The tag (t) is assumed to be the formal ASN.1 tag, for example
+4 for OCTET STRING.
+
+This method is meant to help in standalone encoding calls for
+primitives. For encoding integer types, see [EncodeInteger].
 */
 func EncodePrimitive(t byte, v []byte) ([]byte, error) {
 	l := len(v)
@@ -19,7 +27,7 @@ func EncodePrimitive(t byte, v []byte) ([]byte, error) {
 		out = make([]byte, 1+1+n+l)
 		out[0] = t
 		out[1] = 0x80 | byte(n)
-		WritePrimitiveLength(out[2:2+n], l)
+		WriteLength(out[2:2+n], l)
 		copy(out[2+n:], v)
 	}
 
@@ -27,32 +35,52 @@ func EncodePrimitive(t byte, v []byte) ([]byte, error) {
 }
 
 /*
-WritePrimitiveTLV returns an instance of []byte
+WritePrimitiveTLV returns an instance of []byte following an attempt to encode
+the input payload per class/tag bytes, returning the finished payload appended
+to the input dst instance.
+
+The class byte argument must be one of [ClassUniversal](0), [ClassApplication](1),
+[ClassContextSpecific](2) or [ClassPrivate](3).
+
+The tag uint32 argument represents either the official ASN.1 tag value, for example
+4 for OCTET STRING, or a context tag "wrapper", e.g. "[7]", as defined within the
+relevant ASN.1 module definition.
+
+This method is meant to help in streamed encoding calls for primitives, or where
+specialized wrapping is needed.
 */
 func WritePrimitiveTLV(dst []byte, class byte, tag uint32, payload []byte) []byte {
-	// primitive tag byte
-	first := (class << 6) | byte(tag)
-
-	// encode length
-	l := len(payload)
-	if l < 128 {
-		dst = append(dst, first, byte(l))
-	} else {
-		n := LengthBytes(l)
-		dst = append(dst, first, 0x80|byte(n))
-		var tmp [4]byte
-		WritePrimitiveLength(tmp[len(tmp)-n:], l)
-		dst = append(dst, tmp[len(tmp)-n:]...)
-	}
-
-	// payload
+	dst = WriteTag(dst, class, false, tag)
+	dst = WriteLength(dst, len(payload))
 	return append(dst, payload...)
 }
 
-func ReadExpectedPrimitiveTLV(buf []byte, p *int, class byte, tag uint32) ([]byte, error) {
+/*
+ReadExpectedPrimitiveTLV returns an instance of []byte alongside an error following
+an attempt to process the tag, length and value bytes into discrete components.
+
+The input buf argument represents the ASN.1-encoded payload.
+
+The pointer to int argument represents the cursor position, which will increase in
+magnitude as the base components encoded in buf are read.
+
+The class byte argument must be one of [ClassUniversal](0), [ClassApplication](1),
+[ClassContextSpecific](2) or [ClassPrivate](3).
+
+The tag uint32 argument represents either the official ASN.1 tag value, for example
+4 for OCTET STRING, or a context tag "wrapper", e.g. "[4]", as defined within the
+relevant ASN.1 module definition.
+
+The variadic noTruncate Boolean value controls whether the class, tag and length
+bytes are actually truncated from the return value. By default, those bytes are
+truncated, leaving only the base value.
+*/
+func ReadExpectedPrimitiveTLV(buf []byte, p *int, class byte, tag uint32, noTruncate ...bool) ([]byte, error) {
 	if *p >= len(buf) {
 		return nil, errEOF
 	}
+
+	start := *p // remember tag byte pos
 
 	// read tag byte
 	tagByte := buf[*p]
@@ -62,34 +90,42 @@ func ReadExpectedPrimitiveTLV(buf []byte, p *int, class byte, tag uint32) ([]byt
 	rcvrCons := (tagByte & 0x20) != 0
 	rcvrTag := uint32(tagByte & 0x1F)
 
-	// primitive must have constructed = false
 	if rcvrClass != class || rcvrCons != false || rcvrTag != tag {
 		return nil, asn1Error("primitive tag mismatch")
 	}
 
-	// read primitive length
 	if *p >= len(buf) {
 		return nil, errEOF
 	}
 
-	l, n := ReadPrimitiveLength(buf[*p:])
-	if n == 0 {
+	length, lengthBytes := ReadLength(buf[*p:])
+	if lengthBytes == 0 {
 		return nil, errLength
 	}
-	*p += n
+	*p += lengthBytes
 
-	if *p+l > len(buf) {
+	if *p+length > len(buf) {
 		return nil, errEOF
 	}
 
-	out := buf[*p : *p+l]
-	*p += l
+	// payload-only slice
+	payload := buf[*p : *p+length]
 
-	return out, nil
+	// advance cursor past payload
+	*p += length
+
+	// if noTruncate[0] == true, return full TLV (tag + len + payload)
+	if len(noTruncate) > 0 && noTruncate[0] {
+		payload = buf[start:*p]
+	}
+
+	return payload, nil
 }
 
 /*
 LengthBytes returns the number of bytes required to hold l.
+This is a convenience function, and is mainly used for aid
+in manual payload assembly.
 */
 func LengthBytes(l int) int {
 	switch {
@@ -101,16 +137,6 @@ func LengthBytes(l int) int {
 		return 3
 	default:
 		return 4
-	}
-}
-
-/*
-WritePrimitiveLength writes length l to dst.
-*/
-func WritePrimitiveLength(dst []byte, l int) {
-	for i := len(dst) - 1; i >= 0; i-- {
-		dst[i] = byte(l)
-		l >>= 8
 	}
 }
 
@@ -129,22 +155,4 @@ func encodeLength(l int) []byte {
 	}
 	out := tmp[i:]
 	return append([]byte{0x80 | byte(len(out))}, out...)
-}
-
-func ReadPrimitiveLength(b []byte) (int, int) {
-	if len(b) == 0 {
-		return 0, 0
-	}
-	if b[0] < 128 {
-		return int(b[0]), 1
-	}
-	n := int(b[0] & 0x7F)
-	if len(b) < 1+n {
-		return 0, 0
-	}
-	l := 0
-	for i := 0; i < n; i++ {
-		l = (l << 8) | int(b[1+i])
-	}
-	return l, 1 + n
 }

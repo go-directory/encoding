@@ -41,7 +41,7 @@ func EncodeInteger[T INTEGER](v T) []byte {
 	}
 
 	out := []byte{TagInteger}
-	out = append(out, encodeLength(len(val))...)
+	out = append(out, encodeIntegerLength(len(val))...)
 	out = append(out, val...)
 	return out
 }
@@ -57,7 +57,7 @@ func DecodeInteger[T INTEGER](enc []byte) (T, error) {
 		return zero, asn1Error("INTEGER: decode failed: invalid tag or length")
 	}
 
-	l, n := ReadPrimitiveLength(enc[1:])
+	l, n := ReadLength(enc[1:])
 	if n == 0 || len(enc) < 1+n+l {
 		return zero, asn1Error("INTEGER: decode failed: failed to read primitive length octet(s)")
 	}
@@ -250,4 +250,21 @@ func decodeBigInt(b []byte) *big.Int {
 
 	mag := new(big.Int).SetBytes(tmp)
 	return mag.Neg(mag)
+}
+
+func encodeIntegerLength(l int) []byte {
+	if l < 128 {
+		return []byte{byte(l)}
+	}
+	// long form
+	var tmp [4]byte
+	i := len(tmp)
+	v := l
+	for v != 0 && i > 0 {
+		i--
+		tmp[i] = byte(v)
+		v >>= 8
+	}
+	out := tmp[i:]
+	return append([]byte{0x80 | byte(len(out))}, out...)
 }

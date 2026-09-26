@@ -5,6 +5,73 @@ import (
 	"testing"
 )
 
+func ExampleWrapTLV_sEQUENCE() {
+	type SomeThing struct {
+		Value  []byte
+		Number int64
+	}
+
+	thing := SomeThing{}
+	thing.Value = []byte("example1234")
+	thing.Number = 444
+
+	var enc []byte
+	enc, err := EncodePrimitive(TagOctetString, thing.Value)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	num := EncodeInteger[int64](thing.Number)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	enc = append(enc, num...)
+
+	enc, err = WrapTLV(enc, Tag{0, true, 16})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("Encoded: %v\n", enc)
+
+	var payload []byte
+	payload, err = UnwrapTLV(enc, Tag{0, true, 16})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var dec SomeThing
+
+	p := 0
+	dec.Value, err = ReadExpectedPrimitiveTLV(payload, &p, 0, 4, false) // ok to trim header
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var intBytes []byte
+	intBytes, err = ReadExpectedPrimitiveTLV(payload, &p, 0, 2, true) // do NOT trim header
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	dec.Number, err = DecodeInteger[int64](intBytes)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("Decoded: Value:%s, Number:%d\n", dec.Value, dec.Number)
+	// Output:
+	// Encoded: [48 17 4 11 101 120 97 109 112 108 101 49 50 51 52 2 2 1 188]
+	// Decoded: Value:example1234, Number:444
+}
+
 func ExampleWrapTLV_roundTrip() {
 	coreValue := []byte(`some encoded value`)
 	tag := uint32(7) // or whatever your real tag is
@@ -82,11 +149,13 @@ func TestTagExpectWrongTag(t *testing.T) {
 	}
 }
 
+// TLV stuff on hold for now
+/*
 func TestTLVExpectSuccess(t *testing.T) {
 	r := TLV{
 		Class:       0,
 		Constructed: true,
-		Tag:         16, // byte → uint32 cast must work
+		Tag:         16, // byte -> uint32 cast must work
 	}
 
 	if err := r.Expect(0, true, 16); err != nil {
@@ -145,3 +214,4 @@ func TestTLVExpectByteTagCastsCorrectly(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+*/

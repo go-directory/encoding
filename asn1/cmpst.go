@@ -1,13 +1,10 @@
 package asn1
 
-import (
-	"strconv"
-)
-
 /*
 TLV implements a complete Type-Length-Value construct, useful for
 building PKI or document structures.
 */
+/*
 type TLV struct {
 	Tag         byte
 	Class       byte
@@ -16,20 +13,23 @@ type TLV struct {
 	Value       []byte
 	Children    []TLV
 }
+*/
 
 /*
 Expect returns an error if any of the input values do not correspond
 to those present in the receiver instance.
 */
+/*
 func (r TLV) Expect(class byte, constructed bool, tag uint32) error {
 	return expect(r.Class, class, r.Constructed, constructed, uint32(r.Tag), tag)
 }
+*/
 
 /*
 HasChildren returns a Boolean value indicative of the receiver
 bearing one or more child [TLV] instances.
 */
-func (r TLV) HasChildren() bool { return len(r.Children) > 0 }
+//func (r TLV) HasChildren() bool { return len(r.Children) > 0 }
 
 /*
 ReadExpectedConstructedTLV returns an instance of []byte alongside
@@ -42,9 +42,10 @@ func ReadExpectedConstructedTLV(
 	p *int,
 	class byte,
 	tag uint32,
+	noTruncate ...bool,
 ) ([]byte, error) {
 
-	t, payload, err := ReadConstructedTLV(enc, p)
+	t, payload, err := ReadConstructedTLV(enc, p, noTruncate...)
 	if err == nil {
 		err = t.Expect(class, true, tag)
 	}
@@ -152,8 +153,8 @@ func expect(
 func expectClass(rcvrClass, assnClass byte) (err error) {
 	if rcvrClass != assnClass {
 		err = asn1Error("asn1: wrong class: got ",
-			strconv.Itoa(int(rcvrClass)), ", want ",
-			strconv.Itoa(int(assnClass)))
+			itoa(int(rcvrClass)), ", want ",
+			itoa(int(assnClass)))
 	}
 	return
 }
@@ -161,8 +162,8 @@ func expectClass(rcvrClass, assnClass byte) (err error) {
 func expectTag(rcvrTag, assnTag uint32) (err error) {
 	if rcvrTag != assnTag {
 		err = asn1Error("asn1: wrong tag: got ",
-			strconv.Itoa(int(rcvrTag)), ", want ",
-			strconv.Itoa(int(assnTag)))
+			itoa(int(rcvrTag)), ", want ",
+			itoa(int(assnTag)))
 	}
 	return
 }
@@ -175,168 +176,59 @@ func expectConstructed(rcvrCons, assnCons bool) (err error) {
 	return
 }
 
-/*
-WriteConstructedTag returns an instance of []byte containing the input
-class, constructed and tagNumber values.
-
-This method supports the high-tag-number form.
-*/
-func WriteConstructedTag(dst []byte, class byte, constructed bool, tagNum uint32) []byte {
-	var first byte
-	first = (class << 6)
-	if constructed {
-		first |= 0x20
-	}
-
-	if tagNum < 31 {
-		first |= byte(tagNum)
-		return append(dst, first)
-	}
-
-	// high-tag-number form
-	first |= 0x1F
-	dst = append(dst, first)
-
-	// encode tagNum in base-128 big-endian with MSB continuation
-	var buf [6]byte
-	i := len(buf)
-	n := tagNum
-	for {
-		i--
-		buf[i] = byte(n & 0x7F)
-		n >>= 7
-		if n == 0 {
-			break
-		}
-	}
-
-	// set continuation bits except last
-	for j := i; j < len(buf)-1; j++ {
-		buf[j] |= 0x80
-	}
-
-	return append(dst, buf[i:]...)
-}
-
-func WriteConstructedLength(dst []byte, n int) []byte {
-	if n < 0 {
-		panic("negative length")
-	}
-
-	if n <= 127 {
-		return append(dst, byte(n))
-	}
-
-	// long form
-	var tmp [8]byte
-	l := 0
-	v := uint64(n)
-	for v > 0 {
-		tmp[l] = byte(v & 0xFF)
-		v >>= 8
-		l++
-	}
-
-	dst = append(dst, 0x80|byte(l))
-
-	for i := l - 1; i >= 0; i-- {
-		dst = append(dst, tmp[i])
-	}
-
-	return dst
-}
-
 func WriteConstructedTLV(dst []byte, class byte, constructed bool, tagNum uint32, payload []byte) []byte {
-	dst = WriteConstructedTag(dst, class, constructed, tagNum)
-	dst = WriteConstructedLength(dst, len(payload))
+	dst = WriteTag(dst, class, constructed, tagNum)
+	dst = WriteLength(dst, len(payload))
 	return append(dst, payload...)
 }
 
-func ReadConstructedTag(buf []byte, p *int) (Tag, error) {
+/*
+ReadConstructedTLV returns an instance of [Tag] and []byte alongside an error following an attempt
+to read the header of the buf payload starting at position p.  The return [Tag] instance will bear
+the class, tag and constructed values, while the out ([]byte) instance bears the actual bare value,
+and does not include the class, tag and constructed byte. This is the default behavior.
+
+The variadic noTruncate argument, when true, will NOT truncate the return out ([]byte) value of its
+class, tag and constructed byte.
+*/
+func ReadConstructedTLV(buf []byte, p *int, noTruncate ...bool) (head Tag, out []byte, err error) {
 	if *p >= len(buf) {
-		return Tag{}, errEOF
+		return head, nil, errEOF
 	}
 
-	bt := buf[*p]
-	*p++
+	start := *p // remember tag start
 
-	class := bt >> 6
-	constructed := (bt & 0x20) != 0
-	tagNum := uint32(bt & 0x1F)
+	head, ok := ReadTag(buf[*p:])
+	if ok {
+		*p++
 
-	if tagNum == 0x1F {
-		var n uint32
-		for {
-			if *p >= len(buf) {
-				return Tag{}, errEOF
+		length, n := ReadLength(buf[*p:])
+		if n == 0 {
+			err = errLength
+			return
+		}
+		*p += n
+
+		if length > 0 {
+
+			if *p+length > len(buf) {
+				err = errEOF
+				return
 			}
-			b := buf[*p]
-			*p++
 
-			n = (n << 7) | uint32(b&0x7F)
-			if b&0x80 == 0 {
-				break
+			out = buf[*p : *p+length]
+
+			// advance cursor past payload
+			*p += length
+
+			// optional: return full TLV (tag + length + payload)
+			if len(noTruncate) > 0 && noTruncate[0] {
+				out = buf[start:*p]
 			}
 		}
-		tagNum = n
-	}
-
-	return Tag{Class: class, Constructed: constructed, Tag: tagNum}, nil
-}
-
-func ReadConstructedLength(buf []byte, p *int) (int, error) {
-	if *p >= len(buf) {
-		return 0, errEOF
-	}
-
-	first := buf[*p]
-	*p++
-
-	if first&0x80 == 0 {
-		return int(first), nil
-	}
-
-	n := int(first & 0x7F)
-	if n == 0 || n > 8 {
-		return 0, errLength
-	}
-
-	if *p+n > len(buf) {
-		return 0, errEOF
-	}
-
-	val := 0
-	for i := 0; i < n; i++ {
-		val = (val << 8) | int(buf[*p+i])
-	}
-
-	*p += n
-	return val, nil
-}
-
-func ReadConstructedTLV(buf []byte, p *int) (head Tag, out []byte, err error) {
-	head, err = ReadConstructedTag(buf, p)
-	if err != nil {
-		return
-	}
-
-	var l int
-	l, err = ReadConstructedLength(buf, p)
-	if err != nil {
-		return
-	}
-
-	if l == 0 {
-		return
-	}
-
-	if *p+l > len(buf) {
+	} else {
 		err = errEOF
-		return
 	}
-
-	out = buf[*p : *p+l]
-	*p += l
 
 	return
 }
