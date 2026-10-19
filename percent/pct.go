@@ -4,6 +4,8 @@ import (
 	"github.com/go-directory/common"
 )
 
+type commonErr = common.Error
+
 /*
 Encode returns an instance of []byte alongside an error following
 an attempt to manually percent-encode the input value.
@@ -93,6 +95,8 @@ func Decode(enc []byte) (dec []byte, err error) {
 	return out, nil
 }
 
-func encodingError(msg ...string) error {
-	return common.LDAPResultOther.New(msg...)
+func encodingError(msg ...string) (err commonErr) {
+	err = common.LDAPResultOther.New(msg...)
+	err.SetHeader("percent encoding:")
+	return err
 }
