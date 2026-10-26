@@ -23,20 +23,20 @@ func TestInteger_int(t *testing.T) {
 }
 
 func TestInteger_int32(t *testing.T) {
-        for idx, integer := range []int32{
-                int32(-37465),
-                int32(34728432),
-        } {
-                enc := EncodeInteger(integer)
-                out, err := DecodeInteger[int32](enc)
-                if err != nil {
-                        t.Fatalf("%s[%d] failed: %v", t.Name(), idx, err)
-                }
-                if out != integer {
-                        t.Fatalf("%s[%d] failed:\n\twant: %d\n\tgot:  %d",
-                                t.Name(), idx, integer, out)
-                }
-        }
+	for idx, integer := range []int32{
+		int32(-37465),
+		int32(34728432),
+	} {
+		enc := EncodeInteger(integer)
+		out, err := DecodeInteger[int32](enc)
+		if err != nil {
+			t.Fatalf("%s[%d] failed: %v", t.Name(), idx, err)
+		}
+		if out != integer {
+			t.Fatalf("%s[%d] failed:\n\twant: %d\n\tgot:  %d",
+				t.Name(), idx, integer, out)
+		}
+	}
 }
 
 func TestInteger_int64(t *testing.T) {
@@ -91,20 +91,20 @@ func TestInteger_uint64(t *testing.T) {
 }
 
 func TestInteger_uint32(t *testing.T) {
-        for idx, integer := range []uint32{
-                uint32(37465),
-                uint32(34728432),
-        } {
-                enc := EncodeInteger(integer)
-                out, err := DecodeInteger[uint32](enc)
-                if err != nil {
-                        t.Fatalf("%s[%d] failed: %v", t.Name(), idx, err)
-                }
-                if out != integer {
-                        t.Fatalf("%s[%d] failed:\n\twant: %d\n\tgot:  %d",
-                                t.Name(), idx, integer, out)
-                }
-        }
+	for idx, integer := range []uint32{
+		uint32(37465),
+		uint32(34728432),
+	} {
+		enc := EncodeInteger(integer)
+		out, err := DecodeInteger[uint32](enc)
+		if err != nil {
+			t.Fatalf("%s[%d] failed: %v", t.Name(), idx, err)
+		}
+		if out != integer {
+			t.Fatalf("%s[%d] failed:\n\twant: %d\n\tgot:  %d",
+				t.Name(), idx, integer, out)
+		}
+	}
 }
 
 func TestInteger_bigInt(t *testing.T) {

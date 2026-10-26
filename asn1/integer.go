@@ -162,35 +162,34 @@ func encodeInt64(n int64) []byte {
 }
 
 func encodeInt32(n int32) []byte {
-        if n == 0 {
-                return []byte{0x00}
-        }
+	if n == 0 {
+		return []byte{0x00}
+	}
 
-        var tmp [8]byte
-        v := uint32(n)
-        i := len(tmp)
+	var tmp [8]byte
+	v := uint32(n)
+	i := len(tmp)
 
-        for v != 0 && i > 0 {
-                i--
-                tmp[i] = byte(v)
-                v >>= 8
-        }
+	for v != 0 && i > 0 {
+		i--
+		tmp[i] = byte(v)
+		v >>= 8
+	}
 
-        out := tmp[i:]
+	out := tmp[i:]
 
-        // Positive: ensure MSB = 0
-        if n > 0 && out[0]&0x80 != 0 {
-                out = append([]byte{0x00}, out...)
-        }
+	// Positive: ensure MSB = 0
+	if n > 0 && out[0]&0x80 != 0 {
+		out = append([]byte{0x00}, out...)
+	}
 
-        // Negative: ensure MSB = 1
-        if n < 0 && out[0]&0x80 == 0 {
-                out = append([]byte{0xFF}, out...)
-        }
+	// Negative: ensure MSB = 1
+	if n < 0 && out[0]&0x80 == 0 {
+		out = append([]byte{0xFF}, out...)
+	}
 
-        return out
+	return out
 }
-
 
 func encodeUint64(u uint64) []byte {
 	if u == 0 {
@@ -227,13 +226,13 @@ func decodeInt64(b []byte) int64 {
 }
 
 func decodeInt32(b []byte) int32 {
-        var n int32
-        for i := 0; i < len(b); i++ {
-                n = (n << 8) | int32(b[i])
-        }
-        shift := 64 - uint(len(b))*8
-        n = (n << shift) >> shift
-        return n
+	var n int32
+	for i := 0; i < len(b); i++ {
+		n = (n << 8) | int32(b[i])
+	}
+	shift := 64 - uint(len(b))*8
+	n = (n << shift) >> shift
+	return n
 }
 
 func encodeBigInt(b *big.Int) []byte {

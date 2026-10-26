@@ -27,7 +27,11 @@ func EncodePrimitive(t byte, v []byte) ([]byte, error) {
 		out = make([]byte, 1+1+n+l)
 		out[0] = t
 		out[1] = 0x80 | byte(n)
-		WriteLength(out[2:2+n], l)
+		vlen := l
+		for i := n - 1; i >= 0; i-- {
+			out[2+i] = byte(vlen)
+			vlen >>= 8
+		}
 		copy(out[2+n:], v)
 	}
 
