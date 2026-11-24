@@ -16,7 +16,7 @@ INTEGER encompasses int64, uint64 and *big.Int types to
 implement an UNBOUNDED ASN.1 INTEGER.
 */
 type INTEGER interface {
-        ~int64 | ~uint64 | *big.Int
+	~int64 | ~uint64 | *big.Int
 }
 
 /*
