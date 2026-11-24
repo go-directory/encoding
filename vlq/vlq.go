@@ -2,8 +2,8 @@ package vlq
 
 /*
 vlq.go pertains to the encoding and decoding of numerical
-types, such as uint64, int64 and *big.Int. These, in turn,
-are used for instances of ASN.1 INTEGER in varying forms.
+types, such as uint64, int64 and *big.Int in the context
+of Variable Length Quantity.
 */
 
 import (

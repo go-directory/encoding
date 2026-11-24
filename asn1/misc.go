@@ -17,6 +17,7 @@ func WriteLength(dst []byte, l int) []byte {
 	}
 
 	if l < 128 {
+		emitT("asn1.WriteLength: %d [lenlen:1]", l)
 		return append(dst, byte(l))
 	}
 
@@ -30,6 +31,7 @@ func WriteLength(dst []byte, l int) []byte {
 		tmp[i] = byte(l)
 		l >>= 8
 	}
+	emitT("asn1.WriteLength: %d [lenlen:%d]", l, n)
 
 	return append(dst, tmp[:n]...)
 }
@@ -48,18 +50,23 @@ like:
 */
 func ReadLength(b []byte) (int, int) {
 	if len(b) == 0 {
+		emitT("asn1.ReadLength: 0 [lenlen:NaN]")
 		return 0, 0
 	}
 	if b[0] < 128 {
+		emitT("asn1.ReadLength: %d [lenlen:1]", int(b[0]))
 		return int(b[0]), 1
 	}
+
 	n := int(b[0] & 0x7F)
 	if len(b) < 1+n {
+		emitE("asn1.ReadLength: %d < %d (1+lenlen)", int(b[0]), 1+n)
 		return 0, 0
 	}
 	l := 0
 	for i := 0; i < n; i++ {
 		l = (l << 8) | int(b[1+i])
 	}
+	emitT("asn1.ReadLength: %d [lenlen:%d]", l, 1+n)
 	return l, 1 + n
 }

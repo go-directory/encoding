@@ -15,6 +15,7 @@ primitives. For encoding integer types, see [EncodeInteger].
 func EncodePrimitive(t byte, v []byte) ([]byte, error) {
 	l := len(v)
 	var out []byte
+	class := int(t >> 6)
 
 	switch {
 	case l < 128:
@@ -22,6 +23,8 @@ func EncodePrimitive(t byte, v []byte) ([]byte, error) {
 		out[0] = t
 		out[1] = byte(l)
 		copy(out[2:], v)
+		emitT("asn1.EncodePrimitive: class:%d, tag:%d, len:%d, lenlen:1",
+			class, int(t), l)
 	default:
 		n := LengthBytes(l)
 		out = make([]byte, 1+1+n+l)
@@ -33,6 +36,8 @@ func EncodePrimitive(t byte, v []byte) ([]byte, error) {
 			vlen >>= 8
 		}
 		copy(out[2+n:], v)
+		emitT("asn1.EncodePrimitive: class:%d, tag:%d, len:%d, lenlen:%d",
+			class, int(t), l, n)
 	}
 
 	return out, nil
@@ -54,6 +59,8 @@ This method is meant to help in streamed encoding calls for primitives, or where
 specialized wrapping is needed.
 */
 func WritePrimitiveTLV(dst []byte, class byte, tag uint32, payload []byte) []byte {
+	emitT("asn1.WritePrimitiveTLV: class:%d, tag:%d, rem:%d",
+		int(class), tag, len(payload))
 	dst = WriteTag(dst, class, false, tag)
 	dst = WriteLength(dst, len(payload))
 	return append(dst, payload...)
@@ -81,6 +88,7 @@ truncated, leaving only the base value.
 */
 func ReadExpectedPrimitiveTLV(buf []byte, p *int, class byte, tag uint32, noTruncate ...bool) ([]byte, error) {
 	if *p >= len(buf) {
+		emitErr(errEOF)
 		return nil, errEOF
 	}
 
@@ -95,20 +103,35 @@ func ReadExpectedPrimitiveTLV(buf []byte, p *int, class byte, tag uint32, noTrun
 	rcvrTag := uint32(tagByte & 0x1F)
 
 	if rcvrClass != class || rcvrCons != false || rcvrTag != tag {
-		return nil, asn1Error("primitive tag mismatch")
+		err := asn1Error("primitive tag mismatch")
+		emitErr(err)
+		emitT("asn1.ReadExpectedPrimitiveTLV: class:%d/[expect]%d, "+
+			"tag:%d/[expect]%d, match:false", int(class), int(rcvrClass),
+			tag, rcvrTag)
+		return nil, err
 	}
+	emitT("asn1.ReadExpectedPrimitiveTLV: class:%d, "+
+		"tag:%d, match:true", int(rcvrClass), rcvrTag)
 
 	if *p >= len(buf) {
+		emitErr(errEOF)
 		return nil, errEOF
 	}
 
 	length, lengthBytes := ReadLength(buf[*p:])
 	if lengthBytes == 0 {
+		emitErr(errLength)
 		return nil, errLength
 	}
+
+	emitT("asn1.ReadExpectedPrimitiveTLV: class:%d, "+
+		"tag:%d, len:%d, lenlen:%d", int(rcvrClass),
+		rcvrTag, length, lengthBytes)
+
 	*p += lengthBytes
 
 	if *p+length > len(buf) {
+		emitErr(errEOF)
 		return nil, errEOF
 	}
 
@@ -122,6 +145,9 @@ func ReadExpectedPrimitiveTLV(buf []byte, p *int, class byte, tag uint32, noTrun
 	if len(noTruncate) > 0 && noTruncate[0] {
 		payload = buf[start:*p]
 	}
+	emitT("asn1.ReadExpectedPrimitiveTLV: class:%d, "+
+		"tag:%d, payload:len(%d)", int(rcvrClass),
+		rcvrTag, len(payload))
 
 	return payload, nil
 }
@@ -134,12 +160,16 @@ in manual payload assembly.
 func LengthBytes(l int) int {
 	switch {
 	case l < 256:
+		emitT("asn1.LengthBytes: len:%d, lenlen:%d", l, 1)
 		return 1
 	case l < 65536:
+		emitT("asn1.LengthBytes: len:%d, lenlen:%d", l, 2)
 		return 2
 	case l < 16777216:
+		emitT("asn1.LengthBytes: len:%d, lenlen:%d", l, 3)
 		return 3
 	default:
+		emitT("asn1.LengthBytes: len:%d, lenlen:%d", l, 4)
 		return 4
 	}
 }

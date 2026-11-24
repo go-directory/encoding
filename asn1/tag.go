@@ -38,6 +38,10 @@ func ReadTag(enc []byte) (tag Tag, ok bool) {
 		tag.Class = enc[0] >> 6
 		tag.Constructed = (enc[0] & 0x20) != 0
 		tag.Tag = uint32(enc[0] & 0x1F)
+		emitT("asn1.ReadTag: class:%d, tag:%d, constructed:%t",
+			int(tag.Class), tag.Tag, tag.Constructed)
+	} else {
+		emitW("asn1.ReadTag: zero length encoding, cannot read")
 	}
 
 	return
@@ -47,7 +51,8 @@ func ReadTag(enc []byte) (tag Tag, ok bool) {
 WriteTag returns an instance of []byte containing the
 */
 func WriteTag(dst []byte, class byte, constructed bool, tagNum uint32) []byte {
-	first := class << 6
+	C := class << 6
+	first := C
 
 	if constructed {
 		first |= 0x20
@@ -58,6 +63,9 @@ func WriteTag(dst []byte, class byte, constructed bool, tagNum uint32) []byte {
 	if dst == nil {
 		dst = []byte{}
 	}
+
+	emitT("asn1.WriteTag: class:%d, tag:%d, constructed:%t",
+		int(C), tagNum, constructed)
 
 	return append(dst, first)
 }

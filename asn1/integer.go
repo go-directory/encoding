@@ -41,6 +41,7 @@ func EncodeInteger[T INTEGER](v T) []byte {
 	case *big.Int:
 		val = encodeBigInt(tv)
 	default:
+		emitE("asn1.EncodeInteger: bad type %T", tv)
 		return nil
 	}
 
@@ -108,12 +109,14 @@ func decodeUnsigned[T INTEGER](v []byte) (out T, err error) {
 	var zero T
 	if len(v) > 8 {
 		err = asn1Error("INTEGER: too large for unsigned integer")
+		emitErr(err)
 		return
 	}
 
 	s := decodeInt64(v)
 	if s < 0 {
 		err = asn1Error("INTEGER: negative value not allowed for unsigned integer")
+		emitErr(err)
 		return
 	}
 

@@ -51,13 +51,13 @@ func ReadExpectedConstructedTLV(
 
 /*
 UnwrapTLV returns an instance of []byte alongside an error following an
-attempt to traverse the provided encoding according to the parameters
-in the input variadic [Tag] instances.
+attempt to traverse the provided encoding according to the parameters in
+the input variadic [Tag] instances.
 
-Each [Tag] processes a single "layer" of the encoded structure. If
-there are three [Tag] instances input, this function attempts to
-traverse the same number of layers. The data encountered at the last
-layer is the return payload.
+Each [Tag] processes a single "layer" of the encoded structure. If there
+are three [Tag] instances input, this function attempts to traverse the
+same number of layers. The data encountered at the last layer is the
+return payload.
 
 This is merely a convenience function written to simply calls to the
 [ReadExpectedConstructedTLV] function in iterative fashion.
@@ -66,8 +66,10 @@ See also [WrapTLV].
 */
 func UnwrapTLV(enc []byte, tags ...Tag) ([]byte, error) {
 	var err error
-	if len(enc) == 0 {
+	L := len(enc)
+	if L == 0 {
 		err = asn1Error("UnwrapTLV: empty input payload")
+		emitErr(err)
 		return nil, err
 	}
 
@@ -76,20 +78,33 @@ func UnwrapTLV(enc []byte, tags ...Tag) ([]byte, error) {
 
 	for i := 0; i < len(tags) && err == nil; i++ {
 		want := tags[i]
+
+		emitT("asn1.UnwrapTLV[iter:%d]: class:%d, "+
+			"tag:%d, curs:%d, rem:%d",
+			i, want.Class, want.Tag, p, len(cur))
+
 		var payload []byte
 		if want.Constructed {
 			// constructed TLV
 			if payload, err = ReadExpectedConstructedTLV(cur, &p, want.Class, want.Tag); err == nil {
 				cur = payload
 				p = 0
+				emitT("asn1.UnwrapTLV[iter:%d,recurse:ECTLV]: class:%d, "+
+					"tag:%d, curs:0 [reset], rem:%d",
+					i, want.Class, want.Tag, len(cur))
 			}
 		} else {
 			if payload, err = ReadExpectedPrimitiveTLV(cur, &p, want.Class, want.Tag); err == nil {
 				cur = payload
 				p = 0
+				emitT("asn1.UnwrapTLV[iter:%d,recurse:EPTLV]: class:%d, "+
+					"tag:%d, curs:0 [reset], rem:%d",
+					i, want.Class, want.Tag, len(cur))
 			}
 		}
 	}
+	emitT("asn1.UnwrapTLV: done, err:%t", err != nil)
+	emitErr(err)
 
 	return cur, nil
 }
@@ -102,13 +117,18 @@ for structural guidance.
 See also [UnwrapTLV].
 */
 func WrapTLV(buf []byte, tags ...Tag) ([]byte, error) {
-	if len(tags) == 0 {
-		return nil, asn1Error("WrapTLV: no Tags found")
+	L := len(tags)
+	if L == 0 {
+		err := asn1Error("WrapTLV: no Tags found")
+		emitErr(err)
+		return nil, err
 	}
 
 	cur := buf
-	for i := 0; i < len(tags); i++ {
+	for i := 0; i < L; i++ {
 		t := tags[i]
+		emitT("asn1.WrapTLV[iter:%d]: class:%d, tag:%d, rem:%d",
+			i, t.Class, t.Tag, len(cur))
 
 		if t.Constructed {
 			cur = WriteConstructedTLV(
@@ -142,6 +162,7 @@ func expect(
 			err = expectTag(rcvrTag, assnTag)
 		}
 	}
+	emitErr(err)
 
 	return
 }
@@ -152,6 +173,8 @@ func expectClass(rcvrClass, assnClass byte) (err error) {
 			itoa(int(rcvrClass)), ", want ",
 			itoa(int(assnClass)))
 	}
+	emitErr(err)
+
 	return
 }
 
@@ -161,6 +184,8 @@ func expectTag(rcvrTag, assnTag uint32) (err error) {
 			itoa(int(rcvrTag)), ", want ",
 			itoa(int(assnTag)))
 	}
+	emitErr(err)
+
 	return
 }
 
@@ -168,11 +193,14 @@ func expectConstructed(rcvrCons, assnCons bool) (err error) {
 	if rcvrCons != assnCons {
 		err = asn1Error("asn1: wrong constructed flag: got ",
 			bool2str(rcvrCons), ", want ", bool2str(assnCons))
+		emitErr(err)
 	}
 	return
 }
 
 func WriteConstructedTLV(dst []byte, class byte, constructed bool, tagNum uint32, payload []byte) []byte {
+	emitT("asn1.WriteConstructedTLV: class:%d, tag:%d, rem:%d",
+		int(class), tagNum, len(payload))
 	dst = WriteTag(dst, class, constructed, tagNum)
 	dst = WriteLength(dst, len(payload))
 	return append(dst, payload...)
@@ -189,6 +217,7 @@ class, tag and constructed byte.
 */
 func ReadConstructedTLV(buf []byte, p *int, noTruncate ...bool) (head Tag, out []byte, err error) {
 	if *p >= len(buf) {
+		emitErr(errEOF)
 		return head, nil, errEOF
 	}
 
@@ -196,11 +225,17 @@ func ReadConstructedTLV(buf []byte, p *int, noTruncate ...bool) (head Tag, out [
 
 	head, ok := ReadTag(buf[*p:])
 	if ok {
+		emitT("asn1.ReadConstructedTLV: class:%d, tag:%d, "+
+			"curs:%d", int(head.Class), head.Tag, *p)
+
 		*p++
 
 		length, n := ReadLength(buf[*p:])
+		emitT("asn1.ReadConstructedTLV: class:%d, tag:%d, "+
+			"curs:%d", int(head.Class), head.Tag, *p)
 		if n == 0 {
 			err = errLength
+			emitErr(err)
 			return
 		}
 		*p += n
@@ -209,6 +244,7 @@ func ReadConstructedTLV(buf []byte, p *int, noTruncate ...bool) (head Tag, out [
 
 			if *p+length > len(buf) {
 				err = errEOF
+				emitErr(err)
 				return
 			}
 
@@ -217,13 +253,17 @@ func ReadConstructedTLV(buf []byte, p *int, noTruncate ...bool) (head Tag, out [
 			// advance cursor past payload
 			*p += length
 
-			// optional: return full TLV (tag + length + payload)
+			// optional -- return full TLV (Tag + Length + Payload)
 			if len(noTruncate) > 0 && noTruncate[0] {
 				out = buf[start:*p]
 			}
+			emitT("asn1.ReadConstructedTLV: class:%d, tag:%d, "+
+				"curs:%d [reset], len:%d", int(head.Class),
+				head.Tag, *p, len(out))
 		}
 	} else {
 		err = errEOF
+		emitErr(err)
 	}
 
 	return
